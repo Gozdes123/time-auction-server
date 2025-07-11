@@ -7,14 +7,15 @@ const cors = require('cors');
 
 const app = express();
 app.use(cors({
-    origin: "http://localhost:5173", // 請確保與你的 Vue 開發伺服器地址一致
+    origin: process.env.FRONTEND_URL || "http://localhost:5173", // 使用環境變數或本地地址
     methods: ["GET", "POST"]
 }));
 
 const server = http.createServer(app);
 const io = socketIo(server, {
     cors: {
-        origin: "http://localhost:5173", // 請確保與你的 Vue 開發伺服器地址一致
+        // IMPORTANT: Change this to your frontend's deployed URL later!
+        origin: process.env.FRONTEND_URL || "http://localhost:5173", // 使用環境變數或本地地址
         methods: ["GET", "POST"]
     }
 });
