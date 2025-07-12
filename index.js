@@ -625,45 +625,14 @@ io.on('connection', (socket) => {
         if (player && player.isHoldingButton) { // 確保玩家確實是按住狀態才處理放開
             player.isHoldingButton = false;
 
-            // 處理在倒數階段放手的情況
+            // 如果在倒數階段放手
             if (game.status === 'preCountdown' && game.preRoundIntervalId) {
-                // 不再直接清除倒數，而是檢查放手後是否還有足夠玩家按住
                 player.hasOptedOut = true; // 玩家選擇退出本回合
-                broadcastPlayerStatusUpdate(roomId); // 更新前端顯示此玩家已放手（雖然前端此時可能顯示「準備中...」）
-
-                const remainingPlayersHolding = game.players.filter(p => p.isHoldingButton).length;
-                const totalPlayersInRoom = game.players.length;
-
-                console.log(`[RELEASE] Player ${player.name} released during countdown in room ${roomId}. Remaining holding: ${remainingPlayersHolding}/${totalPlayersInRoom}`);
-
-                let shouldCancelCountdownCompletely = false; // 判斷是否需要完全取消倒數並重啟回合
-
-                if (totalPlayersInRoom === 1) { // 單人模式
-                    if (remainingPlayersHolding === 0) { // 單人模式下，自己放手就是沒人按住了
-                        shouldCancelCountdownCompletely = true;
-                    }
-                } else { // 多人模式
-                    if (remainingPlayersHolding < 2) { // 多人模式下，按住的玩家少於 2 人，則倒數失去意義
-                        shouldCancelCountdownCompletely = true;
-                    }
-                }
-
-                if (shouldCancelCountdownCompletely) {
-                    clearInterval(game.preRoundIntervalId); // 清除倒數計時器
-                    game.preRoundIntervalId = null;
-                    game.status = 'waiting'; // 重置狀態為等待
-
-                    broadcastMessage(roomId, `所有玩家都已放手，本回合無人參與。`);
-                    console.log(`[RELEASE] Room ${roomId}: All players released during countdown. No one participated.`);
-                    game.players.forEach(p => p.hasOptedOut = false); // 清除退出標記
-                    broadcastPlayerStatusUpdate(roomId); // 確保最終狀態同步
-                    setTimeout(() => startNewRound(roomId), 2000); // 延遲後開始新回合
-                } else {
-                    // 還有足夠的玩家按住，倒數繼續，只通知該玩家已放棄
-                    broadcastMessage(socket.id, `你已放棄本回合。`); // 只發送給放手的玩家
-                    console.log(`[RELEASE] Player ${player.name} opted out. Countdown continues.`);
-                    // 不再發送「倒數中斷」的通用訊息，因為倒數仍在進行
-                }
+                broadcastPlayerStatusUpdate(roomId); // 更新前端顯示此玩家已放手 (狀態通用，不暴露具體)
+                broadcastMessage(socket.id, `你已放棄本回合。`); // 只發送給放手的玩家
+                console.log(`[RELEASE] Player ${player.name} opted out during countdown in room ${roomId}. Countdown continues.`);
+                // **這裡不再清除倒數計時器，倒數會繼續跑完**
+                // 讓 `handlePreRoundEndOnServer` 在倒數結束後統一處理結果
                 return; // 處理完畢，退出函數
             }
 
